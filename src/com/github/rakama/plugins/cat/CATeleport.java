@@ -203,6 +203,10 @@ public class CATeleport extends JavaPlugin implements Listener
     protected boolean editBlock(Block block, int delta, boolean delete)
     {
         Location locationDelta = getLocationDelta(block.getLocation(), delta);
+        
+        if(locationDelta == null)
+            return false;
+        
         Block blockDelta = locationDelta.getWorld().getBlockAt(locationDelta);
 
         if(delete)

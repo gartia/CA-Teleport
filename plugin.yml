@@ -4,7 +4,7 @@ generator: http://dinnerbone.com/minecraft/tools/pluginator/
 main: com.github.rakama.plugins.cat.CATeleport
 name: CA-Teleport
 startup: startup
-version: '0.1'
+version: '0.1.1'
 commands:
    cat:
       description: Enable or disable altitude options
