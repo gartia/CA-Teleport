@@ -54,7 +54,7 @@ public class CATeleport extends JavaPlugin implements Listener
     static final boolean sync_time_and_weather = true;
 
     static final int time_sync_threshold = 5;
-    static final long teleport_cooldown = 120;
+    static final long teleport_cooldown = 60;
 
     static final int max_altitude_level = 999;
     static final int min_altitude_level = -999;
@@ -212,7 +212,10 @@ public class CATeleport extends JavaPlugin implements Listener
         if(delete)
             blockDelta.setType(Material.AIR);
         else
+        {
             blockDelta.setType(block.getType());
+            blockDelta.setData(block.getData());
+        }
 
         return true;
     }
