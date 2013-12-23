@@ -14,20 +14,55 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-package com.github.rakama.plugins.cat;
+package org.craftingazeroth.plugins.cat;
 
 import org.bukkit.entity.Player;
 
 public class PlayerProfile
 {
     final Player player;
+    ZoneProfile zoneProfile;
+    boolean teleportEnabled;
+    boolean syncEnabled;
     long lastTeleport;
-
+    
     public PlayerProfile(Player player)
     {
         this.player = player;
+        this.teleportEnabled = true;
+        this.syncEnabled = true;
     }
 
+    public void setZoneProfile(ZoneProfile zoneProfile)
+    {
+        this.zoneProfile = zoneProfile;
+    }
+    
+    public ZoneProfile getZoneProfile()
+    {
+        return zoneProfile;
+    }
+
+    public void setSyncEnabled(boolean enabled)
+    {
+        syncEnabled = enabled;
+    }
+    
+    public boolean isSyncEnabled()
+    {
+        return syncEnabled;
+    }
+
+    public void setTeleportEnabled(boolean enabled)
+    {
+        teleportEnabled = enabled;
+    }
+    
+    public boolean isTeleportEnabled()
+    {
+        return teleportEnabled;
+    }
+    
     public void startTeleportCooldown()
     {
         lastTeleport = player.getTicksLived();

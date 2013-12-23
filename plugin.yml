@@ -4,10 +4,15 @@ generator: http://dinnerbone.com/minecraft/tools/pluginator/
 main: com.github.rakama.plugins.cat.CATeleport
 name: CA-Teleport
 startup: startup
-version: '0.1.2'
+version: '1.0'
 commands:
-   cat:
-      description: Enable or disable altitude options
-      usage: /<command> [tp, sync] [enable, disable, status]
-      permission: <plugin name>.cat
+   catp:
+      description: Enable or disable altitude teleportation
+      usage: /<command> [enable, disable, status] [playername]
+      permission: <plugin name>.catp
+      permission-message: You don't have permission.
+   casync:
+      description: Enable or disable block synchronization across altitude layers
+      usage: /<command> [enable, disable, status] [playername]
+      permission: <plugin name>.casync
       permission-message: You don't have permission.
