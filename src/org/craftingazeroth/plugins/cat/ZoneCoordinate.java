@@ -1,6 +1,6 @@
 package org.craftingazeroth.plugins.cat;
 
-public class ZoneCoordinate
+public final class ZoneCoordinate
 {
     public final int x, z;
     
@@ -13,6 +13,11 @@ public class ZoneCoordinate
     public int hashCode()
     {
         return x ^ z;
+    }
+
+    public boolean equals(Object o)
+    {
+        return equals((ZoneCoordinate)o);
     }
     
     public boolean equals(ZoneCoordinate c)
