@@ -3,6 +3,7 @@ package org.craftingazeroth.plugins.cat;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 
 public class ZoneProfile
@@ -29,7 +30,7 @@ public class ZoneProfile
     }
     
     public Location getTeleportLocation(Location current)
-    {
+    { 
         for(ZoneTeleport teleport : teleports)
         {
             Location loc = teleport.getTeleportLocation(current);

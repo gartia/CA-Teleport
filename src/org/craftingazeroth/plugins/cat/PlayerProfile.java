@@ -21,7 +21,6 @@ import org.bukkit.entity.Player;
 public class PlayerProfile
 {
     final Player player;
-    ZoneProfile zoneProfile;
     boolean teleportEnabled;
     boolean syncEnabled;
     long lastTeleport;
@@ -32,17 +31,7 @@ public class PlayerProfile
         this.teleportEnabled = true;
         this.syncEnabled = true;
     }
-
-    public void setZoneProfile(ZoneProfile zoneProfile)
-    {
-        this.zoneProfile = zoneProfile;
-    }
     
-    public ZoneProfile getZoneProfile()
-    {
-        return zoneProfile;
-    }
-
     public void setSyncEnabled(boolean enabled)
     {
         syncEnabled = enabled;

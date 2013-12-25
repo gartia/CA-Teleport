@@ -16,7 +16,11 @@
 
 package org.craftingazeroth.plugins.cat;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
@@ -26,8 +30,10 @@ import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
@@ -35,13 +41,16 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.util.Vector;
 
 public class CATeleport extends JavaPlugin implements Listener
 {
-    // TODO: config file
+    // TODO: better config file
+    // TODO: R-tree
+
+    final static String yaml_name = "config.yml";
+    final static String sw_tp_string = "stormwind-teleport";
     
     static final long teleport_cooldown = 60;
     
@@ -50,7 +59,7 @@ public class CATeleport extends JavaPlugin implements Listener
     static final double altitude_padding = 1.5;
     static final double zone_padding = 5;
 
-    static final int grid_spacing = 51200;
+    static final int zone_spacing = 51200;
     static final int max_altitude_level = 999;
     static final int min_altitude_level = -999;
 
@@ -80,6 +89,9 @@ public class CATeleport extends JavaPlugin implements Listener
     {
         getServer().getPluginManager().registerEvents(this, this);
 
+        YamlConfiguration yaml = loadYamlFile(new File(getDataFolder(), yaml_name));
+        List<String> sw_config = yaml.getStringList(sw_tp_string);
+        
         ZoneProfile[] azeroth = {
                 new ZoneProfile("Azeroth-1", 0, -1),
                 new ZoneProfile("Azeroth", 0, 0),
@@ -107,16 +119,40 @@ public class CATeleport extends JavaPlugin implements Listener
         
         double psi = Math.PI * 0.213;
         
-        azeroth[1].addTeleport(new ZoneTeleport(instance, 
-                new Circle(3173, 8700, 430), 
-                new Circle(2727-96, 8550, 332),
-                76, -50, psi, false));
+        // to Blasted Lands
+        outland[1].addTeleport(new BoxTeleport(
+                new BoundingBox(-51119, 115, -26, -51115, 215, 6), 
+                5662, 221, -40449));
+
+        // to Dark Portal
+        azeroth[0].addTeleport(new BoxTeleport(
+                new BoundingBox(5654, 221, -40443, 5669, 238, -40439), 
+                -51163, 119, 7));
         
-        // inverse of above
-        instance.addTeleport(new ZoneTeleport(azeroth[1], 
-                new Circle(76, -50, 430 + zone_padding), 
-                new Circle(-256, -503, 332 - zone_padding),
-                3173, 8700, -psi, true));
+        // to Dark Portal
+        azeroth[1].addTeleport(new BoxTeleport(
+                new BoundingBox(5654, 221-196, -40443+51200, 5669, 238-196, -40439+51200), 
+                -51163, 119, 7));
+        
+        boolean sw_tp = true;
+        if(sw_config != null)
+            for(String s: sw_config)
+                sw_tp &= !s.equalsIgnoreCase("false");
+                
+        if(sw_tp)
+        {
+            // to Stormwind instance
+            azeroth[1].addTeleport(new CircTeleport(
+                    new Circle(3173, 8700, 430), 
+                    new Circle(2727-96, 8550, 332),
+                    51200 + 76, -50, psi, false));
+            
+            // inverse of above
+            instance.addTeleport(new CircTeleport(
+                    new Circle(51200 + 76, -50, 430 + zone_padding), 
+                    new Circle(51200 + -256, -503, 332 - zone_padding),
+                    3173, 8700, -psi, true));
+        }
     }
 
     public void onDisable()
@@ -125,6 +161,35 @@ public class CATeleport extends JavaPlugin implements Listener
         zoneProfiles.clear();
     }
 
+    protected YamlConfiguration loadYamlFile(File file)
+    {
+        if(!file.exists())
+            return createDefaultYamlFile(file);
+        else
+            return YamlConfiguration.loadConfiguration(file);
+    }
+    
+    protected YamlConfiguration createDefaultYamlFile(File file)
+    {
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.createSection(sw_tp_string);
+        
+        List<String> list = new LinkedList<String>();
+        list.add("true");
+        yaml.set(sw_tp_string, list);
+        
+        try
+        {
+            yaml.save(file);
+        }
+        catch(IOException e)
+        {
+            e.printStackTrace();
+        }
+        
+        return yaml;
+    }
+    
     public boolean onCommand(CommandSender sender, Command cmd, String commandLabel, String[] args)
     {
         if(args.length < 1)
@@ -151,7 +216,7 @@ public class CATeleport extends JavaPlugin implements Listener
     {
         if(target != null && (target.equals("-global") || target.equals("-all") || target.equals("*")))
         {
-            if(option.equalsIgnoreCase("tp"))
+            if(option.equalsIgnoreCase("catp"))
             {
                 teleport_player = enabled;
                 getServer().broadcastMessage(broadcast_color
@@ -159,7 +224,7 @@ public class CATeleport extends JavaPlugin implements Listener
                         + (enabled ? "enabled" : "disabled")
                         + " globally by " + sender.getName());
             }
-            else if(option.equalsIgnoreCase("sync"))
+            else if(option.equalsIgnoreCase("casync"))
             {
                 sync_blocks = enabled;
                 getServer().broadcastMessage(broadcast_color
@@ -187,7 +252,7 @@ public class CATeleport extends JavaPlugin implements Listener
             if(option.equalsIgnoreCase("catp"))
             {
                 profile.setTeleportEnabled(enabled);                
-                if(target != null && target.equalsIgnoreCase(sender.getName()))
+                if(player.getName().equalsIgnoreCase(sender.getName()))
                 {
                     sender.sendMessage(status_color 
                             + "CA-Teleport: player teleportation "  
@@ -198,7 +263,7 @@ public class CATeleport extends JavaPlugin implements Listener
                     sender.sendMessage(status_color 
                             + "CA-Teleport: player teleportation " 
                             + (enabled ? "enabled" : "disabled") 
-                            + " for " + target);
+                            + " for " + player.getName());
                     player.sendMessage(status_color 
                             + "CA-Teleport: player teleportation " 
                             + (enabled ? "enabled" : "disabled") 
@@ -208,7 +273,7 @@ public class CATeleport extends JavaPlugin implements Listener
             else if(option.equalsIgnoreCase("casync"))
             {
                 profile.setSyncEnabled(enabled);
-                if(target != null && target.equalsIgnoreCase(sender.getName()))
+                if(player.getName().equalsIgnoreCase(sender.getName()))
                 {
                     sender.sendMessage(status_color 
                             + "CA-Teleport: block synchronization "  
@@ -219,7 +284,7 @@ public class CATeleport extends JavaPlugin implements Listener
                     sender.sendMessage(status_color 
                             + "CA-Teleport: block synchronization " 
                             + (enabled ? "enabled" : "disabled")
-                            + " for " + target);
+                            + " for " + player.getName());
                     player.sendMessage(status_color 
                             + "CA-Teleport: block synchronization " 
                             + (enabled ? "enabled" : "disabled") 
@@ -236,32 +301,28 @@ public class CATeleport extends JavaPlugin implements Listener
     protected boolean displayStatus(CommandSender sender, String arg1, String arg2)
     {
         String message;
-        boolean mode;
 
         if(arg1.equalsIgnoreCase("catp"))
         {
-            mode = teleport_player;
-            message = status_color + "AltitudePlugin: player teleportation";
+            message = status_color + "AltitudePlugin: player teleportation";            
+            if(teleport_player) message += " is globally enabled";
+            else message += " is globally disabled";
         }
         else if(arg1.equalsIgnoreCase("casync"))
         {
-            mode = sync_blocks;
-            message = status_color + "AltitudePlugin: block synchronization";
+            message = status_color + "AltitudePlugin: block synchronization";            
+            if(sync_blocks) message += " is globally enabled";
+            else message += " is globally disabled";
         }
         else
             return false;
-
-        if(mode)
-            message += " is globally enabled";
-        else
-            message += " is globally disabled";
 
         sender.sendMessage(message);
 
         return true;
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockPlace(BlockPlaceEvent event)
     {
         if(!sync_blocks)
@@ -276,7 +337,7 @@ public class CATeleport extends JavaPlugin implements Listener
         editBlock(event.getBlock(), false);
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event)
     {
         if(!sync_blocks)
@@ -351,7 +412,6 @@ public class CATeleport extends JavaPlugin implements Listener
     protected PlayerProfile createProfile(Player player)
     {
         PlayerProfile profile = new PlayerProfile(player);
-        profile.setZoneProfile(getZoneProfile(player.getLocation()));
         playerProfiles.put(player, profile);
         return profile;
     }
@@ -365,8 +425,8 @@ public class CATeleport extends JavaPlugin implements Listener
 
         return profile;
     }
-
-    @EventHandler
+    
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerMove(PlayerMoveEvent event)
     {
         if(!teleport_player)
@@ -388,8 +448,8 @@ public class CATeleport extends JavaPlugin implements Listener
         else if(y > bound_above + altitude_padding)
             tele = getLocationDelta(loc, 1);
 
-        if(tele == null && profile.getZoneProfile() != null && profile.getZoneProfile().hasTeleports())
-            tele = profile.getZoneProfile().getTeleportLocation(loc);
+        if(tele == null)
+            tele = getZoneProfile(event.getTo()).getTeleportLocation(loc);
         
         if(tele != null)
         {
@@ -398,17 +458,10 @@ public class CATeleport extends JavaPlugin implements Listener
         }
     }
 
-    @EventHandler
-    public void onPlayerTeleport(PlayerTeleportEvent event)
-    {
-        PlayerProfile player = fetchProfile(event.getPlayer());
-        player.setZoneProfile(getZoneProfile(event.getTo()));
-    }
-    
     protected ZoneProfile getZoneProfile(Location loc)
     {
-        int x = loc.getBlockX() / grid_spacing;
-        int z = loc.getBlockZ() / grid_spacing;        
+        int x = (int)Math.floor((loc.getBlockX() + zone_spacing / 2f) / zone_spacing);
+        int z = (int)Math.floor((loc.getBlockZ() + zone_spacing / 2f) / zone_spacing); 
         return zoneProfiles.get(new ZoneCoordinate(x, z));
     }
     
@@ -444,7 +497,7 @@ public class CATeleport extends JavaPlugin implements Listener
             return null;
 
         Location locationDelta = to.clone();
-        locationDelta.subtract(0, offset * delta, -grid_spacing * delta);
+        locationDelta.subtract(0, offset * delta, -zone_spacing * delta);
 
         // return null of target zone is not defined
         ZoneProfile zone = getZoneProfile(locationDelta);

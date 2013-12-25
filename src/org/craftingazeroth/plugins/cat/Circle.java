@@ -35,7 +35,7 @@ public class Circle
 
         double dx = x - x0;
         double dz = z - z0;
-
+        
         return Math.sqrt(dx*dx + dz*dz) < r;
     }
 }
